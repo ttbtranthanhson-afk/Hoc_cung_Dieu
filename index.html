@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>汉语学习 · HánYǔ</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700;900&family=Nunito:wght@400;600;700;800;900&family=Noto+Sans+SC:wght@300;400;500&display=swap"
+          rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="style.css">
+    <script src="script.js" defer></script>
+    <meta name="color-scheme" content="light dark">
+</head>
+<body>
+    <!-- Guard: prevents onclick errors if script loads slowly -->
+    <script>
+        window.showPage = function() {};
+        window.openFile = function() {};
+        window.toggleFolder = function() {};
+        window.openSidebar = function() {};
+        window.closeSidebar = function() {};
+        window.showFabMenu = function() {};
+        window.closeBottomSheet = function() {};
+        window.toggleTheme = function() {};
+    </script>
+
+    <div class="toast" id="toast"></div>
+
+    <!-- Context Menus -->
+    <div class="ctx-menu" id="ctx-empty">
+        <div class="ctx-item" onclick="createFolder()"><i class="ph-fill ph-folder" style="font-size: 18px; color: var(--gold);"></i> Tạo Folder</div>
+        <div class="ctx-item" onclick="createFile()"><i class="ph-fill ph-file-text" style="font-size: 18px; color: var(--accent1);"></i> Tạo File</div>
+    </div>
+    <div class="ctx-menu" id="ctx-folder">
+        <div class="ctx-item" onclick="renameItem()">Đổi tên</div>
+        <div class="ctx-item" onclick="copyItem()">Sao chép</div>
+        <div class="ctx-item" onclick="cutItem()">Cắt</div>
+        <div class="ctx-divider"></div>
+        <div class="ctx-item" onclick="createSubFolder()"><i class="ph-fill ph-folder-plus" style="font-size: 18px; color: var(--gold);"></i> Tạo folder con</div>
+        <div class="ctx-item" onclick="createFile()"><i class="ph-fill ph-file-plus" style="font-size: 18px; color: var(--accent1);"></i> Tạo file mới</div>
+        <div class="ctx-divider"></div>
+        <div class="ctx-item" onclick="exportExcel()">Xuất folder → Excel</div>
+    </div>
+    <div class="ctx-menu" id="ctx-file">
+        <div class="ctx-item" onclick="renameItem()">Đổi tên</div>
+        <div class="ctx-item" onclick="copyItem()">Sao chép</div>
+        <div class="ctx-item" onclick="cutItem()">Cắt</div>
+        <div class="ctx-divider"></div>
+        <div class="ctx-item" onclick="exportExcel()">Xuất file → Excel</div>
+    </div>
+
+    <!-- Sidebar Overlay (mobile) -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+    <!-- ========== HOME ========== -->
+    <div class="page active" id="home">
+        <div class="home-deco">汉</div>
+        <div class="home-center">
+            <div class="greeting-wrap">
+                <div class="greeting-sub">欢迎回来 · Từ Thanh Sơn</div>
+                <div class="greeting">Xin chào Diệu</div>
+            </div>
+            <div class="home-nav">
+                <button class="home-btn" onclick="showPage('learning')">
+                    <span class="btn-label">Học tập</span>
+                </button>
+                <button class="home-btn" onclick="showPage('review')">
+                    <span class="btn-label">Ôn tập</span>
+                </button>
+                <button class="home-btn" onclick="showPage('settings')">
+                    <span class="btn-label">Cài đặt</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== LEARNING ========== -->
+    <div class="page" id="learning">
+        <!-- Sidebar -->
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <span class="sidebar-title">Thư mục</span>
+                <button class="back-btn" onclick="goFolderBack()" title="Quay lại"><i class="ph-bold ph-arrow-left"></i></button>
+            </div>
+            <div class="sidebar-tree" id="sidebarTree" oncontextmenu="onTreeCtx(event,'empty')">
+                <!-- tree items injected by JS -->
+            </div>
+        </div>
+
+        <!-- Workspace -->
+        <div class="workspace">
+            <div class="workspace-bar">
+                <button class="menu-btn" id="menuBtn" onclick="openSidebar()"><i class="ph-bold ph-list"></i></button>
+                <div class="ws-breadcrumb">
+                    <span id="wsBreadcrumb">Tất cả tài liệu</span>
+                </div>
+            </div>
+            <div class="workspace-content" id="workspaceContent">
+                <!-- injected by JS -->
+            </div>
+        </div>
+
+        <!-- FAB – always visible on learning page -->
+        <button class="fab" id="fabBtn" onclick="showFabMenu()" title="Thêm file hoặc folder">
+            <span class="fab-icon"><i class="ph-bold ph-plus"></i></span>
+            <span class="fab-label" id="fabLabel">Thêm mới</span>
+        </button>
+    </div>
+
+    <!-- ========== BOTTOM SHEET (mobile menu) ========== -->
+    <div id="bottomSheetOverlay" onclick="closeBottomSheet()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;backdrop-filter:blur(2px);"></div>
+    <div id="bottomSheet" style="
+  position:fixed;bottom:0;left:0;right:0;z-index:501;
+  background:var(--surface);border-radius:24px 24px 0 0;
+  padding:0 0 calc(env(safe-area-inset-bottom,0px) + 20px);
+  box-shadow:0 -8px 40px rgba(0,0,0,.18);
+  transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);
+">
+        <div style="width:40px;height:4px;background:var(--border);border-radius:2px;margin:12px auto 4px;"></div>
+        <div id="bottomSheetTitle" style="text-align:center;font-size:13px;font-weight:700;color:var(--text2);padding:4px 20px 12px;letter-spacing:1px;text-transform:uppercase;"></div>
+        <div id="bottomSheetItems" style="padding:0 12px;"></div>
+    </div>
+
+    <!-- ========== FILE EDITOR ========== -->
+    <div class="page" id="file-editor">
+        <div class="editor-header">
+            <button class="back-btn" style="width:36px;height:36px;border-radius:10px;background:var(--border);border:none;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;" onclick="showPage('learning')"><i class="ph-bold ph-arrow-left"></i></button>
+            <div class="editor-title" id="editorTitle"><i class="ph-fill ph-file-text" style="color:var(--accent1);margin-right:8px;"></i>File mới</div>
+            <div class="step-indicator">
+                <div class="step active" id="step1Ind">① Nhập từ</div>
+                <div class="step" id="step2Ind">② Kết quả</div>
+            </div>
+            <div id="autoSaveBadge" style="font-size:13px;color:#27ae60;font-weight:700;opacity:0;transition:opacity .5s;white-space:nowrap;display:flex;align-items:center;gap:4px;"><i class="ph-fill ph-check-circle"></i> Đã lưu</div>
+        </div>
+        <div class="editor-body" id="editorBody">
+            <!-- injected -->
+        </div>
+    </div>
+
+    <!-- ========== REVIEW – CHỌN FILE ========== -->
+    <div class="page" id="review">
+        <div class="rv-header">
+            <button class="back-btn" style="width:36px;height:36px;border-radius:10px;background:var(--border);border:none;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;" onclick="showPage('home')"><i class="ph-bold ph-arrow-left"></i></button>
+            <div style="font-size:20px;font-weight:700;">Ôn tập</div>
+        </div>
+
+        <!-- Unified body: 2-col desktop, 1-col mobile -->
+        <div class="rv-body">
+            <div class="rv-left">
+                <div class="rv-section-title"><i class="ph-fill ph-folder-open" style="font-size: 14px; margin-right: 4px; vertical-align: middle;"></i> Chọn file ôn tập</div>
+                <div id="reviewFileList" class="rv-file-list">
+                    <div class="rv-empty">Chưa có file học tập nào.<br>Hãy tạo file trong mục Học tập!</div>
+                </div>
+            </div>
+            <div class="rv-right">
+                <div class="rv-info-card" id="rvInfoCard">
+                    <div class="rv-info-icon" id="rvInfoIcon"><i class="ph-fill ph-folder-open" style="color:var(--gold);"></i></div>
+                    <div id="reviewFileName" class="rv-info-name">Chọn một file bên trái</div>
+                    <div class="rv-info-meta">
+                        <div class="rv-meta-item">
+                            <span class="rv-meta-label">Số từ</span>
+                            <span id="reviewWordCount" class="rv-meta-val">—</span>
+                        </div>
+                        <div class="rv-meta-item">
+                            <span class="rv-meta-label">Ngày tạo</span>
+                            <span id="reviewFileDate" class="rv-meta-val">—</span>
+                        </div>
+                    </div>
+                    <button id="btnStartReview" class="rv-start-btn" disabled onclick="startReviewSession()">Bắt đầu ôn tập</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile sticky bottom bar -->
+        <div class="rv-mobile-bar" id="rvMobileBar">
+            <div class="rv-mobile-bar-info">
+                <div id="rvMobileFileName" class="rv-mobile-bar-name">Chưa chọn file</div>
+                <div id="rvMobileFileMeta" class="rv-mobile-bar-meta">Nhấn vào file để chọn</div>
+            </div>
+            <button id="btnStartReviewMobile" class="rv-mobile-bar-btn" disabled onclick="startReviewSession()">Bắt đầu →</button>
+        </div>
+    </div>
+
+    <!-- ========== REVIEW – CHỌN TRÒ CHƠI ========== -->
+    <div class="page" id="review-game-select">
+        <div class="rv-header">
+            <button class="back-btn" style="width:36px;height:36px;border-radius:10px;background:var(--border);border:none;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;" onclick="showPage('review')"><i class="ph-bold ph-arrow-left"></i></button>
+            <div style="font-size:20px;font-weight:700;">Chọn chế độ ôn tập</div>
+        </div>
+        <div class="rv-gs-wrap">
+            <div id="gameSelectGrid" class="rv-gs-grid"></div>
+        </div>
+    </div>
+
+    <!-- ========== GAME: TRẮC NGHIỆM ABCD ========== -->
+    <div class="page" id="review-game-abc">
+        <div class="rv-game-header">
+            <button class="back-btn" style="width:36px;height:36px;border-radius:10px;background:var(--border);border:none;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;" onclick="goToGameSelect()"><i class="ph-bold ph-arrow-left"></i></button>
+            <div class="rv-game-title">Trắc nghiệm ABCD</div>
+            <div id="abcProgress" class="rv-game-progress">Câu 1/1</div>
+        </div>
+        <div id="abcScore" class="rv-game-score"></div>
+        <div class="rv-game-body" id="abcBody"></div>
+    </div>
+
+    <!-- ========== GAME: FLASHCARD ========== -->
+    <div class="page" id="review-game-flash">
+        <div class="rv-game-header">
+            <button class="back-btn" style="width:36px;height:36px;border-radius:10px;background:var(--border);border:none;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;" onclick="goToGameSelect()"><i class="ph-bold ph-arrow-left"></i></button>
+            <div class="rv-game-title">Flashcard</div>
+            <div id="flashProgress" class="rv-game-progress">Thẻ 1/1</div>
+        </div>
+        <div id="flashScore" class="rv-game-score"></div>
+        <div class="rv-game-body" id="flashBody"></div>
+    </div>
+
+    <!-- ========== GAME: NHÌN HÁN → VIẾT NGHĨA ========== -->
+    <div class="page" id="review-game-write-meaning">
+        <div class="rv-game-header">
+            <button class="back-btn" style="width:36px;height:36px;border-radius:10px;background:var(--border);border:none;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;" onclick="goToGameSelect()"><i class="ph-bold ph-arrow-left"></i></button>
+            <div class="rv-game-title"><i class="ph-fill ph-pencil-line" style="margin-right:6px"></i> Nhìn Hán → viết nghĩa</div>
+            <div id="writeMeanProgress" class="rv-game-progress">Câu 1/1</div>
+        </div>
+        <div id="writeMeanScore" class="rv-game-score"></div>
+        <div class="rv-game-body" id="writeMeanBody"></div>
+    </div>
+
+    <!-- ========== GAME: NHÌN NGHĨA → VIẾT HÁN ========== -->
+    <div class="page" id="review-game-write-zh">
+        <div class="rv-game-header">
+            <button class="back-btn" style="width:36px;height:36px;border-radius:10px;background:var(--border);border:none;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;" onclick="goToGameSelect()"><i class="ph-bold ph-arrow-left"></i></button>
+            <div class="rv-game-title">Nhìn nghĩa → viết Hán</div>
+            <div id="writeZhProgress" class="rv-game-progress">Câu 1/1</div>
+        </div>
+        <div id="writeZhScore" class="rv-game-score"></div>
+        <div class="rv-game-body" id="writeZhBody"></div>
+    </div>
+
+    <!-- ========== KẾT QUẢ ========== -->
+    <div class="page" id="review-result">
+        <div class="rv-header">
+            <button class="back-btn" style="width:36px;height:36px;border-radius:10px;background:var(--border);border:none;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;" onclick="goToGameSelect()"><i class="ph-bold ph-arrow-left"></i></button>
+            <div style="font-size:20px;font-weight:700;">Kết quả</div>
+        </div>
+        <div class="rv-result-wrap">
+            <div id="resultBody" class="rv-result-body"></div>
+            <div class="rv-result-btns">
+                <button class="confirm-btn" onclick="restartCurrentGame()"><i class="ph-bold ph-arrows-clockwise" style="margin-right:6px"></i> Chơi lại</button>
+                <button class="confirm-btn" style="background:linear-gradient(135deg,#e74c3c,#c0392b);" onclick="reviewWrongWords()"><i class="ph-fill ph-books" style="margin-right:6px"></i> Ôn từ sai</button>
+                <button class="confirm-btn" style="background:linear-gradient(135deg,#6366f1,#4f46e5);" onclick="goToGameSelect()"><i class="ph-fill ph-game-controller" style="margin-right:6px"></i> Chọn game khác</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== SETTINGS ========== -->
+    <div class="page" id="settings">
+        <div class="settings-header" style="max-width:500px;width:100%;">
+            <button class="back-btn" style="width:36px;height:36px;border-radius:10px;background:var(--border);border:none;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;" onclick="showPage('home')"><i class="ph-bold ph-arrow-left"></i></button>
+            <div style="font-size:20px;font-weight:700;">Cài đặt</div>
+        </div>
+
+        <!-- Giao diện -->
+        <div class="settings-card">
+            <div class="settings-section-label"><i class="ph-fill ph-palette" style="margin-right:6px; font-size:16px;"></i> Giao diện</div>
+            <div class="settings-row">
+                <div><div class="settings-label">Chế độ tối</div><div class="settings-desc">Giao diện tối nhẹ mắt ban đêm</div></div>
+                <button class="toggle" id="darkToggle" onclick="toggleTheme()"></button>
+            </div>
+            <div class="settings-row">
+                <div><div class="settings-label">Phát âm tự động</div><div class="settings-desc">Phát âm khi hiển thị từ mới</div></div>
+                <button class="toggle" id="audioToggle" onclick="this.classList.toggle('on');saveSettings();showToast('✅ Đã lưu!')"></button>
+            </div>
+            <div class="settings-row">
+                <div><div class="settings-label">Hiển thị Pinyin</div><div class="settings-desc">Luôn hiện phiên âm bên dưới</div></div>
+                <button class="toggle on" id="pinyinToggle" onclick="this.classList.toggle('on');saveSettings();showToast('✅ Đã lưu!')"></button>
+            </div>
+            <div class="settings-row">
+                <div><div class="settings-label">Nhắc nhở học tập</div><div class="settings-desc">Nhận thông báo nhắc học mỗi ngày</div></div>
+                <button class="toggle on" id="notifToggle" onclick="this.classList.toggle('on');saveSettings();showToast('✅ Đã lưu!')"></button>
+            </div>
+        </div>
+
+        <!-- Dịch thuật -->
+        <div class="settings-card">
+            <div class="settings-section-label"><i class="ph-fill ph-sparkle" style="margin-right:6px; font-size:16px; color:var(--accent1)"></i> Dịch thuật (Gemini)</div>
+            <div class="settings-row" style="flex-direction:column;align-items:flex-start;gap:8px;">
+                <div style="width:100%;">
+                    <div class="settings-label">Gemini API Key</div>
+                    <div class="settings-desc">Dùng để dịch tự động, lấy phiên âm và Hán Việt. <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--accent1);text-decoration:none;">Lấy key tại đây</a></div>
+                </div>
+                <input type="password" id="geminiApiKey" placeholder="Dán API Key của bạn vào đây..." 
+                    style="width:100%;padding:10px 14px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);outline:none;font-family:monospace;"
+                    onchange="saveSettings();showToast('<i class=&quot;ph-fill ph-check-circle&quot;></i> Đã lưu API Key!')">
+                <button class="confirm-btn" style="width:100%;padding:10px;font-size:13px;background:var(--accent2);display:flex;align-items:center;justify-content:center;gap:6px;" onclick="testGeminiConnection()"><i class="ph-bold ph-magnifying-glass"></i> Kiểm tra kết nối & Model khả dụng</button>
+                <div id="geminiTestResult" style="font-size:12px;margin-top:5px;display:none;padding:8px;border-radius:8px;background:rgba(0,0,0,0.05);"></div>
+            </div>
+        </div>
+
+        <!-- Tài khoản -->
+        <div class="settings-card">
+            <div class="settings-section-label"><i class="ph-fill ph-user" style="margin-right:6px; font-size:16px;"></i> Tài khoản</div>
+            <div class="settings-row">
+                <div>
+                    <div class="settings-label">Tên người dùng</div>
+                    <div class="settings-desc">Hiển thị lời chào trên trang chủ</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span id="settingsUsername" style="font-weight:700;color:var(--accent1);font-size:15px;">Diệu</span>
+                    <button class="settings-edit-btn" onclick="promptEditUsername()" title="Đổi tên"><i class="ph-fill ph-pencil-simple"></i></button>
+                </div>
+            </div>
+            <div class="settings-row">
+                <div>
+                    <div class="settings-label">Dữ liệu đã lưu</div>
+                    <div class="settings-desc">Từ vựng, file, cài đặt – lưu trong trình duyệt</div>
+                </div>
+                <div id="storageSizeEl" style="font-size:12px;color:var(--text2);font-weight:700;">...</div>
+            </div>
+            <div class="settings-row" style="border-bottom:none;">
+                <div>
+                    <div class="settings-label" style="color:#e74c3c">Xóa toàn bộ dữ liệu</div>
+                    <div class="settings-desc">Không thể khôi phục sau khi xóa</div>
+                </div>
+                <button class="settings-danger-btn" onclick="confirmClearData()">Xóa</button>
+            </div>
+        </div>
+
+        <!-- Thông tin -->
+        <div class="settings-card">
+            <div class="settings-section-label"><i class="ph-fill ph-info" style="margin-right:6px; font-size:16px;"></i> Thông tin</div>
+            <div class="settings-row" style="border-bottom:none;">
+                <div><div class="settings-label">Phiên bản</div></div>
+                <div style="font-size:13px;color:var(--text2);font-weight:700;">汉语学习 v2.0</div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
